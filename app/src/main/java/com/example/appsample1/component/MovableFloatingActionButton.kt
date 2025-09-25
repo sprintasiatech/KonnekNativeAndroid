@@ -9,6 +9,7 @@ import android.graphics.Typeface
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -19,6 +20,7 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import com.example.appsample1.support.AppLoggerCS
+import com.example.appsample1.toPx
 import com.konneknative.R
 import kotlin.math.abs
 
@@ -84,6 +86,16 @@ class MovableFloatingActionButton(context: Context) : FrameLayout(context), View
         })
     }
 
+    fun addEmptyViewSpace(context: Context, linearLayout: LinearLayout, widthDp: Float, heightDp: Float) {
+        val spacer = View(context)
+        val layoutParams = LinearLayout.LayoutParams(
+            TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, widthDp, context.resources.displayMetrics).toInt(),
+            TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, heightDp, context.resources.displayMetrics).toInt()
+        )
+        spacer.layoutParams = layoutParams
+        linearLayout.addView(spacer)
+    }
+
     init {
         layoutParams = LayoutParams(
             LayoutParams.WRAP_CONTENT,
@@ -127,7 +139,7 @@ class MovableFloatingActionButton(context: Context) : FrameLayout(context), View
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                setMargins(12, 0, 12, 0) // space between icon and text
+                setMargins(12.toPx(context), 0, 12, 0) // space between icon and text
             }
             setTextColor(Color.WHITE)
             textSize = 18f
@@ -135,6 +147,7 @@ class MovableFloatingActionButton(context: Context) : FrameLayout(context), View
             // text = "Open"
         }
 
+        addEmptyViewSpace(context, container, 12f, 0f)
         container.addView(imageView)
         container.addView(textView)
         addView(container)

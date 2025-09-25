@@ -53,7 +53,7 @@ object KonnekNative {
                 20, 20, 20, 20
             )
             layoutParams = CoordinatorLayout.LayoutParams(
-                180.toPx(context), // width in pixels
+                300.toPx(context), // width in pixels
                 70.toPx(context),  // height in pixels
             ).apply {
                 gravity = Gravity.BOTTOM or Gravity.END
