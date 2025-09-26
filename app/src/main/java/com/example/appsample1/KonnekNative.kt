@@ -1,6 +1,7 @@
 package com.example.appsample1
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
@@ -53,10 +54,13 @@ object KonnekNative {
                 20, 20, 20, 20
             )
             layoutParams = CoordinatorLayout.LayoutParams(
-                300.toPx(context), // width in pixels
-                70.toPx(context),  // height in pixels
+                ConstraintLayout.LayoutParams.WRAP_CONTENT,
+                70.toPx(context)
             ).apply {
                 gravity = Gravity.BOTTOM or Gravity.END
+                marginEnd = 10.toPx(context)
+                bottomMargin = 10.toPx(context)
+                minimumWidth = 195.toPx(context)
             }
             elevation = 16f
             background = GradientDrawable().apply {
@@ -83,17 +87,27 @@ object KonnekNative {
                     textButton = ""
                 }
                 iconButton = datas["ios_icon"] as String? ?: ""
-                val bitmap = iconButton.base64ToBitmap()
+                val bitmap: Bitmap?
+                if (iconButton != ""){
+                    bitmap = iconButton.base64ToBitmap()
+                } else {
+                    bitmap = null
+                }
 
                 btn.apply {
                     setButtonTextColor(textColor)
                     setButtonBackgroundColor(bgColor)
                     setButtonText(textButton)
                     setBackgroundImage(null)
-                    bitmap?.let { output ->
-                        setButtonIcon2(output)
-                    } ?: run {
-                        // setButtonIcon(R.drawable.ic_konnek)
+                    if (bitmap != null) {
+                        setButtonIconVisibility(true)
+                        bitmap.let { output ->
+                            setButtonIcon2(output)
+                        } ?: run {
+                            // setButtonIcon(R.drawable.ic_konnek)
+                        }
+                    } else {
+                        setButtonIconVisibility(false)
                     }
                     background = GradientDrawable().apply {
                         shape = GradientDrawable.RECTANGLE

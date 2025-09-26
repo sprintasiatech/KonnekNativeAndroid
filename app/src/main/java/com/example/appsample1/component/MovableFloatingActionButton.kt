@@ -19,6 +19,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
+import androidx.core.view.isVisible
 import com.example.appsample1.support.AppLoggerCS
 import com.example.appsample1.toPx
 import com.konneknative.R
@@ -109,13 +110,6 @@ class MovableFloatingActionButton(context: Context) : FrameLayout(context), View
             setPadding(12, 12, 12, 12)
             val drawableData =
                 ContextCompat.getDrawable(context, R.drawable.ic_konnek) // Optional background
-//            if (drawableData is BitmapDrawable) {
-//                drawableData.setTileModeXY(null, null) // Prevent repeating
-//                drawableData.gravity = android.view.Gravity.CENTER // Center the image
-//                drawableData.setAntiAlias(true)
-//                drawableData.setFilterBitmap(true)
-//                drawableData.setDither(true)
-//            }
             val bitmap = (drawableData as BitmapDrawable).bitmap
             val scaledDrawable = BitmapDrawable(context.resources, bitmap).apply {
                 gravity = android.view.Gravity.FILL
@@ -214,6 +208,10 @@ class MovableFloatingActionButton(context: Context) : FrameLayout(context), View
 
     fun setButtonIcon2(drawableRes: Bitmap) {
         imageView.setImageBitmap(drawableRes)
+    }
+
+    fun setButtonIconVisibility(value: Boolean) {
+         imageView.isVisible = value
     }
 
     fun setButtonTextColor(colorHex: String) {
