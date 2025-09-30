@@ -108,14 +108,13 @@ class MovableFloatingActionButton(context: Context) : FrameLayout(context), View
             orientation = LinearLayout.HORIZONTAL
 //            setPadding(24, 24, 24, 24)
             setPadding(12, 12, 12, 12)
-            val drawableData =
-                ContextCompat.getDrawable(context, R.drawable.ic_konnek) // Optional background
-            val bitmap = (drawableData as BitmapDrawable).bitmap
-            val scaledDrawable = BitmapDrawable(context.resources, bitmap).apply {
-                gravity = android.view.Gravity.FILL
-                setTileModeXY(null, null)
-            }
-            background = scaledDrawable
+//            val drawableData = ContextCompat.getDrawable(context, R.drawable.ic_konnek) // Optional background
+//            val bitmap = (drawableData as BitmapDrawable).bitmap
+//            val scaledDrawable = BitmapDrawable(context.resources, bitmap).apply {
+//                gravity = android.view.Gravity.FILL
+//                setTileModeXY(null, null)
+//            }
+//            background = scaledDrawable
             gravity = Gravity.CENTER_VERTICAL
         }
 
