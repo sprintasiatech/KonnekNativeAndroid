@@ -18,6 +18,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.toColorInt
 import androidx.core.view.isVisible
 import com.example.appsample1.support.AppLoggerCS
@@ -195,6 +196,10 @@ class MovableFloatingActionButton(context: Context) : FrameLayout(context), View
 
     fun setButtonText(text: String) {
         textView.text = text
+    }
+
+    fun setButtonTextFontStyle(fontResId: Int) {
+        textView.typeface = ResourcesCompat.getFont(context, fontResId)
     }
 
     fun setBackgroundImage(drawableData: Drawable?) {
