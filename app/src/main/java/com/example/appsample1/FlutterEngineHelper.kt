@@ -107,18 +107,24 @@ object FlutterEngineHelper {
 
     var initConfigData: String = ""
 
-    private fun callConfigViaNative() {
-        KonnekService().getConfig(
-            KonnekNative.clientId,
-            onSuccess = { value: String ->
-                initConfigData = value
-                val output: Map<*, *> = jsonStringToMap(value)
-                KonnekNative.triggerFloatingUIChanges.invoke(output["data"] as Map<*, *>)
-            },
-            onFailed = { errorMessage: String ->
-                // println("[FlutterEngineHelper][callConfigViaNative][onFailed] errorMessage: $errorMessage")
-            },
-        )
+    fun callConfigViaNative() {
+        try {
+            if (flutterEngine != null) {
+                KonnekService().getConfig(
+                    KonnekNative.clientId,
+                    onSuccess = { value: String ->
+                        initConfigData = value
+                        val output: Map<*, *> = jsonStringToMap(value)
+                        KonnekNative.triggerFloatingUIChanges.invoke(output["data"] as Map<*, *>)
+                    },
+                    onFailed = { errorMessage: String ->
+                        // println("[FlutterEngineHelper][callConfigViaNative][onFailed] errorMessage: $errorMessage")
+                    },
+                )
+            }
+        } catch (e: Exception) {
+            throw e
+        }
     }
 
     private fun jsonStringToMap(jsonString: String): Map<*, *> {

@@ -46,6 +46,8 @@ object KonnekNative {
         var textButton = ""
         var iconButton = ""
 
+        FlutterEngineHelper.callConfigViaNative()
+
         var btn = MovableFloatingActionButton(context)
 
         btn.apply {
@@ -137,6 +139,8 @@ object KonnekNative {
         var textColor = "#000000"
         var textButton = ""
         var iconButton = ""
+
+        FlutterEngineHelper.callConfigViaNative()
 
         var btn = MovableFloatingActionButton(context)
 
