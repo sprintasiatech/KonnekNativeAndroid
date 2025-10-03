@@ -46,7 +46,7 @@ object KonnekNative {
         var textButton = ""
         var iconButton = ""
 
-        FlutterEngineHelper.callConfigViaNative()
+        FlutterEngineHelper.callConfigViaNative(context)
 
         var btn = MovableFloatingActionButton(context)
 
@@ -140,7 +140,7 @@ object KonnekNative {
         var textButton = ""
         var iconButton = ""
 
-        FlutterEngineHelper.callConfigViaNative()
+        FlutterEngineHelper.callConfigViaNative(context)
 
         var btn = MovableFloatingActionButton(context)
 

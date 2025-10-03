@@ -3,8 +3,11 @@ package com.example.appsample1
 import android.app.Activity
 import android.app.Application
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -98,7 +101,7 @@ object FlutterEngineHelper {
                     FlutterEngineCache.getInstance().put(ENGINE_ID, this)
                 }
                 registerLifecycle(context)
-                callConfigViaNative()
+                callConfigViaNative(context)
             }
         } catch (e: Exception) {
             AppLoggerCS.debugLog("[FlutterEngineHelper][ensureEngine] exception: ${e.toString()}")
@@ -107,8 +110,12 @@ object FlutterEngineHelper {
 
     var initConfigData: String = ""
 
-    fun callConfigViaNative() {
+    fun callConfigViaNative(context: Context) {
         try {
+            if (!isNetworkAvailable(context)) {
+                Toast.makeText(context, "No internet connection", Toast.LENGTH_SHORT).show()
+                return
+            }
             if (flutterEngine != null) {
                 KonnekService().getConfig(
                     KonnekNative.clientId,
@@ -214,5 +221,12 @@ object FlutterEngineHelper {
                 EnvironmentConfig.flavor = Flavor.STAGING
             }
         }
+    }
+
+    private fun isNetworkAvailable(context: Context): Boolean {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 }
