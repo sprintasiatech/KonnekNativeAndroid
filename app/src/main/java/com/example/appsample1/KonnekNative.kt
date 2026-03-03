@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.widget.FrameLayout
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -14,12 +16,31 @@ import androidx.core.graphics.toColorInt
 import com.example.appsample1.FlutterEngineHelper.envInit
 import com.example.appsample1.support.AppLoggerCS
 
+data class FloatingButtonConfig(
+    val buttonColor: String = "#FFFFFF",
+    val textButtonColor: String = "#000000",
+    val textButton: String = "",
+    val iconBase64: String = "",
+    val isTextVisible: Boolean = false,
+)
+
 object KonnekNative {
     internal var clientId: String = ""
     internal var clientSecret: String = ""
     internal var flavor: String = ""
-    lateinit var triggerFloatingUIChanges: (Map<*, *>) -> Unit
 
+    var triggerFloatingUIChanges: ((Map<*, *>) -> Unit)? = null
+
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    /**
+     * Initialize the SDK
+     *
+     * @param context   Application context
+     * @param id        Client ID provided by Konnek
+     * @param secret    Client secret provided by Konnek
+     * @param flavorData Environment string: "production" | "staging" (default: "production")
+     */
     @JvmStatic
     fun initializeSDK(
         context: Context,
@@ -32,197 +53,143 @@ object KonnekNative {
         flavor = flavorData
         envInit(flavor)
         FlutterEngineHelper.ensureEngine(context.applicationContext)
-        AppLoggerCS.useLogger = true
+        AppLoggerCS.useLogger = false
     }
 
     fun disposeEngine() {
         FlutterEngineHelper.disposeEngine()
     }
 
+    /**
+     * Bypassing Floating Button navigation direct to Konnek Chat Page
+     */
+    fun openChat(context: Context) {
+        FlutterEngineHelper.launchFlutter(context);
+    }
+
+    /**
+     * Returns floating action button component.
+     *
+     * [fontResId] is optional — pass null (or omit) for default font.
+     *
+     * Usage (Kotlin):
+     * ```kotlin
+     * val fab = KonnekNative.getFloatingButton(this)
+     * val fabCustom = KonnekNative.getFloatingButton(this, fontResId = R.font.zurich_sans)
+     * root.addView(fab)
+     * ```
+     *
+     * Usage (Java):
+     * ```java
+     * FrameLayout fab = KonnekNative.getFloatingButton(this, null);
+     * root.addView(fab);
+     * ```
+     *
+     * @param context   Activity or Fragment context
+     * @param fontResId Optional font resource ID for button label
+     */
     @JvmStatic
-    fun getFloatingButtonCustomize(context: Context, fontResId: Int?): FrameLayout {
-        var bgColor = "#FFFFFF"
-        var textColor = "#000000"
-        var textButton = ""
-        var iconButton = ""
+    @JvmOverloads
+    fun getFloatingButton(
+        context: Context,
+        fontResId: Int? = null,
+    ): FrameLayout {
+        var config = FloatingButtonConfig()
 
         FlutterEngineHelper.callConfigViaNative(context)
 
-        var btn = MovableFloatingActionButton(context)
-
-        btn.apply {
-            setBackgroundColor(bgColor.toColorInt())
-            setPadding(
-                20, 20, 20, 20
-            )
-            layoutParams = CoordinatorLayout.LayoutParams(
-                ConstraintLayout.LayoutParams.WRAP_CONTENT,
-                70.toPx(context)
-            ).apply {
-                gravity = Gravity.BOTTOM or Gravity.END
-                marginEnd = 10.toPx(context)
-                bottomMargin = 10.toPx(context)
-                minimumWidth = 195.toPx(context)
-            }
-            elevation = 16f
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = 10.toPx(context).toFloat()
-                setColor((bgColor).toColorInt()) // background color
-            }
+        val btn = MovableFloatingActionButton(context).apply {
+            applyConfig(context, config, fontResId)
             setOnClickListener {
                 FlutterEngineHelper.launchFlutter(context)
             }
+            minimumWidth = 195.toPx(context)
         }
 
-        triggerFloatingUIChanges = { datas ->
-            if (datas["status"] != "true" || datas["status"] != true) {
-                if (datas["button_color"] != null) {
-                    bgColor = datas["button_color"] as String? ?: ""
-                }
-                if (datas["text_button_color"] != null) {
-                    textColor = datas["text_button_color"] as String? ?: ""
-                }
-                if (datas["text_status"] == true) {
-                    textButton = datas["text_button"] as String? ?: ""
-                } else {
-                    textButton = ""
-                }
-                iconButton = datas["ios_icon"] as String? ?: ""
-                val bitmap: Bitmap?
-                if (iconButton != ""){
-                    bitmap = iconButton.base64ToBitmap()
-                } else {
-                    bitmap = null
-                }
+        triggerFloatingUIChanges = { rawData ->
+            val parsed = rawData.toFloatingButtonConfig()
 
-                btn.apply {
-                    setButtonTextColor(textColor)
-                    setButtonBackgroundColor(bgColor)
-                    setButtonText(textButton)
-                    setBackgroundImage(null)
-                    if (fontResId != null) {
-                        setButtonTextFontStyle(fontResId)
-                    }
-                    if (bitmap != null) {
-                        setButtonIconVisibility(true)
-                        bitmap.let { output ->
-                            setButtonIcon2(output)
-                        } ?: run {
-                            // setButtonIcon(R.drawable.ic_konnek)
-                        }
-                    } else {
-                        setButtonIconVisibility(false)
-                    }
-                    background = GradientDrawable().apply {
-                        shape = GradientDrawable.RECTANGLE
-                        cornerRadius = 10.toPx(context).toFloat()
-                        setColor(bgColor.toColorInt()) // background color
-                    }
-                }
+            mainHandler.post {
+                config = parsed
+                btn.applyConfig(context, config, fontResId)
             }
         }
 
-        // Jika pakai constraint layout
-        if (btn.layoutParams is ConstraintLayout.LayoutParams) {
-            val layoutParams = btn.layoutParams as ConstraintLayout.LayoutParams
-            layoutParams.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
-            layoutParams.rightToRight = ConstraintLayout.LayoutParams.PARENT_ID
-        }
+        btn.layoutParams = buildLayoutParams(context)
 
         return btn
     }
 
+    /**
+     * @deprecated Use [getFloatingButton] with optional [fontResId] instead.
+     */
+    @Deprecated(
+        message = "Use getFloatingButton(context, fontResId) instead.",
+        replaceWith = ReplaceWith("getFloatingButton(context, fontResId)"),
+    )
     @JvmStatic
-    fun getFloatingButton(context: Context): FrameLayout {
-        var bgColor = "#FFFFFF"
-        var textColor = "#000000"
-        var textButton = ""
-        var iconButton = ""
+    fun getFloatingButtonCustomize(context: Context, fontResId: Int?): FrameLayout =
+        getFloatingButton(context, fontResId)
 
-        FlutterEngineHelper.callConfigViaNative(context)
-
-        var btn = MovableFloatingActionButton(context)
-
-        btn.apply {
-            setBackgroundColor(bgColor.toColorInt())
-            setPadding(
-                20, 20, 20, 20
-            )
-            layoutParams = CoordinatorLayout.LayoutParams(
-                ConstraintLayout.LayoutParams.WRAP_CONTENT,
-                70.toPx(context)
-            ).apply {
-                gravity = Gravity.BOTTOM or Gravity.END
-                marginEnd = 10.toPx(context)
-                bottomMargin = 10.toPx(context)
-                minimumWidth = 195.toPx(context)
-            }
-            elevation = 16f
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = 10.toPx(context).toFloat()
-                setColor((bgColor).toColorInt()) // background color
-            }
-            setOnClickListener {
-                FlutterEngineHelper.launchFlutter(context)
-            }
+    private fun buildLayoutParams(context: Context): CoordinatorLayout.LayoutParams =
+        CoordinatorLayout.LayoutParams(
+            ConstraintLayout.LayoutParams.WRAP_CONTENT,
+            70.toPx(context),
+        ).apply {
+            gravity = Gravity.BOTTOM or Gravity.END
+            marginEnd = 10.toPx(context)
+            bottomMargin = 10.toPx(context)
         }
+}
 
-        triggerFloatingUIChanges = { datas ->
-            if (datas["status"] != "true" || datas["status"] != true) {
-                if (datas["button_color"] != null) {
-                    bgColor = datas["button_color"] as String? ?: ""
-                }
-                if (datas["text_button_color"] != null) {
-                    textColor = datas["text_button_color"] as String? ?: ""
-                }
-                if (datas["text_status"] == true) {
-                    textButton = datas["text_button"] as String? ?: ""
-                } else {
-                    textButton = ""
-                }
-                iconButton = datas["ios_icon"] as String? ?: ""
-                val bitmap: Bitmap?
-                if (iconButton != ""){
-                    bitmap = iconButton.base64ToBitmap()
-                } else {
-                    bitmap = null
-                }
+private fun MovableFloatingActionButton.applyConfig(
+    context: Context,
+    config: FloatingButtonConfig,
+    fontResId: Int?,
+) {
+    setButtonTextColor(config.textButtonColor)
+    setButtonBackgroundColor(config.buttonColor)
+    setButtonText(if (config.isTextVisible) config.textButton else "")
+    setBackgroundImage(null)
 
-                btn.apply {
-                    setButtonTextColor(textColor)
-                    setButtonBackgroundColor(bgColor)
-                    setButtonText(textButton)
-                    setBackgroundImage(null)
-                    if (bitmap != null) {
-                        setButtonIconVisibility(true)
-                        bitmap.let { output ->
-                            setButtonIcon2(output)
-                        } ?: run {
-                            // setButtonIcon(R.drawable.ic_konnek)
-                        }
-                    } else {
-                        setButtonIconVisibility(false)
-                    }
-                    background = GradientDrawable().apply {
-                        shape = GradientDrawable.RECTANGLE
-                        cornerRadius = 10.toPx(context).toFloat()
-                        setColor(bgColor.toColorInt()) // background color
-                    }
-                }
-            }
-        }
+    fontResId?.let { setButtonTextFontStyle(it) }
 
-        // Jika pakai constraint layout
-        if (btn.layoutParams is ConstraintLayout.LayoutParams) {
-            val layoutParams = btn.layoutParams as ConstraintLayout.LayoutParams
-            layoutParams.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
-            layoutParams.rightToRight = ConstraintLayout.LayoutParams.PARENT_ID
-        }
+    val bitmap: Bitmap? = config.iconBase64
+        .takeIf { it.isNotEmpty() }
+        ?.base64ToBitmap()
 
-        return btn
+    if (bitmap != null) {
+        setButtonIconVisibility(true)
+        setButtonIcon2(bitmap)
+    } else {
+        setButtonIconVisibility(false)
     }
+
+    background = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = 10.toPx(context).toFloat()
+        setColor(config.buttonColor.toColorInt())
+    }
+
+    if (layoutParams is ConstraintLayout.LayoutParams) {
+        (layoutParams as ConstraintLayout.LayoutParams).apply {
+            bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
+            rightToRight = ConstraintLayout.LayoutParams.PARENT_ID
+        }
+    }
+}
+
+private fun Map<*, *>.toFloatingButtonConfig(): FloatingButtonConfig {
+    val isActive = this["status"] == "true" || this["status"] == true
+    if (!isActive) return FloatingButtonConfig()
+
+    return FloatingButtonConfig(
+        buttonColor = this["button_color"] as? String ?: "#FFFFFF",
+        textButtonColor = this["text_button_color"] as? String ?: "#000000",
+        textButton = this["text_button"] as? String ?: "",
+        iconBase64 = this["ios_icon"] as? String ?: "",
+        isTextVisible = this["text_status"] == true,
+    )
 }
 
 fun Int.toPx(context: Context): Int =

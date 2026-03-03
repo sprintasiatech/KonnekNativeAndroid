@@ -122,7 +122,7 @@ object FlutterEngineHelper {
                     onSuccess = { value: String ->
                         initConfigData = value
                         val output: Map<*, *> = jsonStringToMap(value)
-                        KonnekNative.triggerFloatingUIChanges.invoke(output["data"] as Map<*, *>)
+                        KonnekNative.triggerFloatingUIChanges?.invoke(output["data"] as Map<*, *>)
                     },
                     onFailed = { errorMessage: String ->
                         // println("[FlutterEngineHelper][callConfigViaNative][onFailed] errorMessage: $errorMessage")
@@ -215,6 +215,10 @@ object FlutterEngineHelper {
 
             "production" -> {
                 EnvironmentConfig.flavor = Flavor.PRODUCTION
+            }
+
+            "canary" -> {
+                EnvironmentConfig.flavor = Flavor.CANARY
             }
 
             else -> {
