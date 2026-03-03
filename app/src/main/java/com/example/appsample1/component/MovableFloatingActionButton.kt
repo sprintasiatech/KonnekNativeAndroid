@@ -6,7 +6,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Typeface
-import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.util.TypedValue
@@ -17,7 +16,6 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.toColorInt
 import androidx.core.view.isVisible
@@ -25,6 +23,7 @@ import com.example.appsample1.support.AppLoggerCS
 import com.example.appsample1.toPx
 import com.konneknative.R
 import kotlin.math.abs
+import androidx.core.graphics.scale
 
 class MovableFloatingActionButton(context: Context) : FrameLayout(context), View.OnTouchListener {
 
@@ -35,7 +34,6 @@ class MovableFloatingActionButton(context: Context) : FrameLayout(context), View
 
     private val imageView: ImageView
     private val textView: TextView
-
     private val container: LinearLayout
 
     private fun registerLifecycle(context: Context) {
@@ -43,102 +41,62 @@ class MovableFloatingActionButton(context: Context) : FrameLayout(context), View
         application.registerActivityLifecycleCallbacks(object :
             Application.ActivityLifecycleCallbacks {
             override fun onActivityStarted(activity: Activity) {
-                // Start engine here if appropriate
                 AppLoggerCS.debugLog(
                     "[FlutterEngineHelper][registerLifecycle][onActivityStarted] Activity started: ${activity.localClassName}"
                 )
             }
 
-            override fun onActivityStopped(activity: Activity) {
-//                AppLoggerCS.debugLog(
-//                    "[FlutterEngineHelper][registerLifecycle][onActivityStopped] Activity stopped: ${activity.localClassName}"
-//                )
-            }
-
-            override fun onActivityDestroyed(activity: Activity) {
-//                AppLoggerCS.debugLog(
-//                    "[FlutterEngineHelper][registerLifecycle][onActivityDestroyed] Activity destroyed: ${activity.localClassName}"
-//                )
-            }
-
-            // Required empty implementations
-            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
-//                AppLoggerCS.debugLog(
-//                    "[FlutterEngineHelper][registerLifecycle][onActivityCreated] Activity created: ${activity.localClassName}"
-//                )
-            }
-
-            override fun onActivityResumed(activity: Activity) {
-//                AppLoggerCS.debugLog(
-//                    "[FlutterEngineHelper][registerLifecycle][onActivityResumed] Activity resumed: ${activity.localClassName}"
-//                )
-            }
-
-            override fun onActivityPaused(activity: Activity) {
-//                AppLoggerCS.debugLog(
-//                    "[FlutterEngineHelper][registerLifecycle][onActivityPaused] Activity paused: ${activity.localClassName}"
-//                )
-            }
-
-            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {
-//                AppLoggerCS.debugLog(
-//                    "[FlutterEngineHelper][registerLifecycle][onActivitySaveInstanceState] Activity onActivitySaveInstanceState: ${activity.localClassName}"
-//                )
-            }
+            override fun onActivityStopped(activity: Activity) {}
+            override fun onActivityDestroyed(activity: Activity) {}
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+            override fun onActivityResumed(activity: Activity) {}
+            override fun onActivityPaused(activity: Activity) {}
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
         })
     }
 
-    fun addEmptyViewSpace(context: Context, linearLayout: LinearLayout, widthDp: Float, heightDp: Float) {
+    fun addEmptyViewSpace(
+        context: Context,
+        linearLayout: LinearLayout,
+        widthDp: Float,
+        heightDp: Float,
+    ) {
         val spacer = View(context)
-        val layoutParams = LinearLayout.LayoutParams(
-            TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, widthDp, context.resources.displayMetrics).toInt(),
-            TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, heightDp, context.resources.displayMetrics).toInt()
+        spacer.layoutParams = LinearLayout.LayoutParams(
+            TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, widthDp, context.resources.displayMetrics
+            ).toInt(),
+            TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, heightDp, context.resources.displayMetrics
+            ).toInt(),
         )
-        spacer.layoutParams = layoutParams
         linearLayout.addView(spacer)
     }
 
     init {
-        layoutParams = LayoutParams(
-            LayoutParams.WRAP_CONTENT,
-            LayoutParams.WRAP_CONTENT
-        )
+        layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
 
-        // Use horizontal LinearLayout to place image + text side by side
         container = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
-//            setPadding(24, 24, 24, 24)
             setPadding(12, 12, 12, 12)
-//            val drawableData = ContextCompat.getDrawable(context, R.drawable.ic_konnek) // Optional background
-//            val bitmap = (drawableData as BitmapDrawable).bitmap
-//            val scaledDrawable = BitmapDrawable(context.resources, bitmap).apply {
-//                gravity = android.view.Gravity.FILL
-//                setTileModeXY(null, null)
-//            }
-//            background = scaledDrawable
             gravity = Gravity.CENTER_VERTICAL
         }
 
         imageView = ImageView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                130,
-                130,
-            ) // Customize size as needed
+            layoutParams = LinearLayout.LayoutParams(130, 130)
             scaleType = ImageView.ScaleType.FIT_CENTER
-//            setPadding(12, 0, 12, 0) // space between icon and text
         }
 
         textView = TextView(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
+                LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
-                setMargins(12.toPx(context), 0, 12, 0) // space between icon and text
+                setMargins(12.toPx(context), 0, 12, 0)
             }
             setTextColor(Color.WHITE)
             textSize = 18f
             setTypeface(null, Typeface.BOLD)
-            // text = "Open"
         }
 
         addEmptyViewSpace(context, container, 12f, 0f)
@@ -150,7 +108,6 @@ class MovableFloatingActionButton(context: Context) : FrameLayout(context), View
     }
 
     override fun onTouch(view: View, event: MotionEvent): Boolean {
-        val layoutParams = layoutParams as MarginLayoutParams
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 downRawX = event.rawX
@@ -161,23 +118,28 @@ class MovableFloatingActionButton(context: Context) : FrameLayout(context), View
             }
 
             MotionEvent.ACTION_MOVE -> {
-                val parent = parent as? View ?: return false
-                val parentWidth = parent.width
-                val parentHeight = parent.height
+                val parentView = parent as? View ?: return false
+
+                val parentWidth = parentView.width
+                val parentHeight = parentView.height
                 val viewWidth = width
                 val viewHeight = height
 
-                var newX = event.rawX + dX
-                var newY = event.rawY + dY
+                if (parentWidth <= 0 || parentHeight <= 0) return true
 
-                newX = newX.coerceIn(
-                    layoutParams.leftMargin.toFloat(),
-                    (parentWidth - viewWidth - layoutParams.rightMargin).toFloat()
-                )
-                newY = newY.coerceIn(
-                    layoutParams.topMargin.toFloat(),
-                    (parentHeight - viewHeight - layoutParams.bottomMargin).toFloat()
-                )
+                val layoutParams = layoutParams as? MarginLayoutParams
+
+                val minX = layoutParams?.leftMargin?.toFloat() ?: 0f
+                val minY = layoutParams?.topMargin?.toFloat() ?: 0f
+                val maxX = (parentWidth - viewWidth - (layoutParams?.rightMargin ?: 0))
+                    .toFloat()
+                    .coerceAtLeast(minX)
+                val maxY = (parentHeight - viewHeight - (layoutParams?.bottomMargin ?: 0))
+                    .toFloat()
+                    .coerceAtLeast(minY)
+
+                val newX = (event.rawX + dX).coerceIn(minX, maxX)
+                val newY = (event.rawY + dY).coerceIn(minY, maxY)
 
                 animate().x(newX).y(newY).setDuration(0).start()
                 return true
@@ -215,7 +177,7 @@ class MovableFloatingActionButton(context: Context) : FrameLayout(context), View
     }
 
     fun setButtonIconVisibility(value: Boolean) {
-         imageView.isVisible = value
+        imageView.isVisible = value
     }
 
     fun setButtonTextColor(colorHex: String) {
@@ -236,13 +198,10 @@ class MovableFloatingActionButton(context: Context) : FrameLayout(context), View
 
     fun setButtonBackgroundColor(colorHex: String) {
         try {
-            // setBackgroundColor(Color.parseColor(colorHex))
             setBackgroundColor(colorHex.toColorInt())
         } catch (e: Exception) {
-            // setBackgroundColor(Color.parseColor("#ffffffff"))
             setBackgroundColor("#FFFFFF".toColorInt())
         }
-
     }
 
     companion object {
@@ -251,11 +210,6 @@ class MovableFloatingActionButton(context: Context) : FrameLayout(context), View
 
     fun scaleToFitWidth(bitmap: Bitmap, screenWidth: Int): Bitmap {
         val factor = screenWidth / bitmap.width.toFloat()
-        return Bitmap.createScaledBitmap(
-            bitmap,
-            screenWidth,
-            (bitmap.height * factor).toInt(),
-            true
-        )
+        return bitmap.scale(screenWidth, (bitmap.height * factor).toInt())
     }
 }
