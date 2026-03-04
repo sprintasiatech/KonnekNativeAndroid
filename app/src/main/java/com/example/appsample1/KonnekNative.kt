@@ -42,6 +42,7 @@ object KonnekNative {
      * @param flavorData Environment string: "production" | "staging" (default: "production")
      */
     @JvmStatic
+    @JvmOverloads
     fun initializeSDK(
         context: Context,
         id: String,
@@ -61,8 +62,13 @@ object KonnekNative {
     }
 
     /**
-     * Bypassing Floating Button navigation direct to Konnek Chat Page
+     * Direct to Konnek Chats function
+     *
+     * Bypassing Floating Button navigation direct to Konnek Chats
+     *
+     * without using getFloatingButton
      */
+    @JvmStatic
     fun openChat(context: Context) {
         FlutterEngineHelper.launchFlutter(context);
     }
