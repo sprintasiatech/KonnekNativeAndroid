@@ -6,13 +6,8 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
 import com.example.appsample1.support.AppLoggerCS
-import com.example.appsample1.support.DataGetConfig
 import com.example.appsample1.support.EnvironmentConfig
 import com.example.appsample1.support.Flavor
 import com.example.appsample1.support.KonnekService
@@ -23,214 +18,173 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.embedding.engine.dart.DartExecutor
 import io.flutter.plugin.common.MethodChannel
-import org.json.JSONObject
 
 object FlutterEngineHelper {
+
     private var flutterEngine: FlutterEngine? = null
     private const val ENGINE_ID = "sag_main_engine"
     private const val CHANNEL_ID = "konnek_native"
-    private lateinit var channel: MethodChannel
+    private const val TAG = "[FlutterEngineHelper]"
 
-    private fun registerLifecycle(context: Context) {
-        val application = context.applicationContext as Application
-        application.registerActivityLifecycleCallbacks(object :
-            Application.ActivityLifecycleCallbacks {
-            override fun onActivityStarted(activity: Activity) {
-                // Start engine here if appropriate
-//                AppLoggerCS.debugLog(
-//                    "[FlutterEngineHelper][registerLifecycle][onActivityStarted] Activity started: ${activity.localClassName}"
-//                )
+    private var channel: MethodChannel? = null
+    private var initConfigData: String = ""
+    private var lifecycleRegistered = false
+    private var isEnvInitialized = false
+
+    fun envInit(flavor: String) {
+        EnvironmentConfig.flavor = when (flavor) {
+            "development" -> Flavor.DEVELOPMENT
+            "staging" -> Flavor.STAGING
+            "production" -> Flavor.PRODUCTION
+            else -> {
+                AppLoggerCS.debugLog("$TAG[envInit] Unknown flavor '$flavor', defaulting to STAGING")
+                Flavor.STAGING
             }
-
-            override fun onActivityStopped(activity: Activity) {
-//                disposeEngine()
-//                AppLoggerCS.debugLog(
-//                    "[FlutterEngineHelper][registerLifecycle][onActivityStopped] Activity stopped: ${activity.localClassName}"
-//                )
-            }
-
-            override fun onActivityDestroyed(activity: Activity) {
-                disposeEngine()
-//                AppLoggerCS.debugLog(
-//                    "[FlutterEngineHelper][registerLifecycle][onActivityDestroyed] Activity destroyed: ${activity.localClassName}"
-//                )
-            }
-
-            // Required empty implementations
-            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
-//                AppLoggerCS.debugLog(
-//                    "[FlutterEngineHelper][registerLifecycle][onActivityCreated] Activity created: ${activity.localClassName}"
-//                )
-            }
-
-            override fun onActivityResumed(activity: Activity) {
-//                AppLoggerCS.debugLog(
-//                    "[FlutterEngineHelper][registerLifecycle][onActivityResumed] Activity resumed: ${activity.localClassName}"
-//                )
-            }
-
-            override fun onActivityPaused(activity: Activity) {
-//                AppLoggerCS.debugLog(
-//                    "[FlutterEngineHelper][registerLifecycle][onActivityPaused] Activity paused: ${activity.localClassName}"
-//                )
-            }
-
-            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {
-//                AppLoggerCS.debugLog(
-//                    "[FlutterEngineHelper][registerLifecycle][onActivitySaveInstanceState] Activity onActivitySaveInstanceState: ${activity.localClassName}"
-//                )
-            }
-        })
-    }
-
-    fun disposeEngine() {
-        if (flutterEngine != null || FlutterEngineCache.getInstance().contains(ENGINE_ID)) {
-            FlutterEngineCache.getInstance().clear();
         }
+        isEnvInitialized = true
     }
 
+    @Synchronized
     fun ensureEngine(context: Context) {
-        try {
-            if (flutterEngine == null) {
-                flutterEngine = FlutterEngine(context.applicationContext).apply {
-                    navigationChannel.setInitialRoute("/")
-                    dartExecutor.executeDartEntrypoint(
-                        DartExecutor.DartEntrypoint.createDefault()
-                    )
-
-                    FlutterEngineCache.getInstance().put(ENGINE_ID, this)
-                }
-                registerLifecycle(context)
-                callConfigViaNative(context)
-            }
-        } catch (e: Exception) {
-            AppLoggerCS.debugLog("[FlutterEngineHelper][ensureEngine] exception: ${e.toString()}")
+        check(isEnvInitialized) {
+            "envInit() must be called before ensureEngine()"
         }
-    }
+        if (flutterEngine != null) return
 
-    var initConfigData: String = ""
-
-    fun callConfigViaNative(context: Context) {
         try {
-            if (!isNetworkAvailable(context)) {
-                Toast.makeText(context, "No internet connection", Toast.LENGTH_SHORT).show()
-                return
-            }
-            if (flutterEngine != null) {
-                KonnekService().getConfig(
-                    KonnekNative.clientId,
-                    onSuccess = { value: String ->
-                        initConfigData = value
-                        val output: Map<*, *> = jsonStringToMap(value)
-                        KonnekNative.triggerFloatingUIChanges?.invoke(output["data"] as Map<*, *>)
-                    },
-                    onFailed = { errorMessage: String ->
-                        // println("[FlutterEngineHelper][callConfigViaNative][onFailed] errorMessage: $errorMessage")
-                    },
+            flutterEngine = FlutterEngine(context.applicationContext).apply {
+                navigationChannel.setInitialRoute("/")
+                dartExecutor.executeDartEntrypoint(
+                    DartExecutor.DartEntrypoint.createDefault()
                 )
+                FlutterEngineCache.getInstance().put(ENGINE_ID, this)
             }
+
+            if (!lifecycleRegistered) {
+                registerLifecycleCallbacks(context)
+                lifecycleRegistered = true
+            }
+
+            callConfigViaNative(context)
         } catch (e: Exception) {
-            throw e
-        }
-    }
-
-    private fun jsonStringToMap(jsonString: String): Map<*, *> {
-        val jsonObject = JSONObject(jsonString)
-        val map = mutableMapOf<String, Any>()
-        val keys = jsonObject.keys()
-
-        while (keys.hasNext()) {
-            val key = keys.next()
-            val value = jsonObject.get(key)
-            when (value) {
-                is JSONObject -> map[key] = jsonStringToMap(value.toString())
-                // is JSONArray -> map[key] = jsonArrayToList(value)
-                else -> map[key] = value
-            }
-        }
-        return map.toMap()
-    }
-
-    private fun callConfig(engineInput: FlutterEngine) {
-        AppLoggerCS.debugLog("[FlutterEngineHelper][callConfig]")
-        // val engine = FlutterEngineCache.getInstance().get(ENGINE_ID)
-        val engine = engineInput
-        if (engine != null) {
-            channel = MethodChannel(
-                engine.dartExecutor.binaryMessenger,
-                CHANNEL_ID,
-            )
-            val arguments = hashMapOf<String, String>()
-            arguments["clientId"] = KonnekNative.clientId
-            arguments["clientSecret"] = KonnekNative.clientSecret
-            arguments["flavor"] = KonnekNative.flavor
-            val sendData: String = Gson().toJson(arguments)
-            channel.invokeMethod("clientConfigChannel", sendData)
-            if (initConfigData != "") {
-                channel.invokeMethod("fetchConfigData", initConfigData)
-            }
-
-            channel.setMethodCallHandler { call, result ->
-                if (call.method == "configData") {
-                    val map: Map<*, *> = call.arguments as Map<*, *>
-                    result.success("success")
-                } else if (call.method == "disposeEngine") {
-                    result.success("success dispose engine")
-                } else {
-                    result.notImplemented()
-                }
-            }
+            AppLoggerCS.debugLog("$TAG[ensureEngine] Failed to create engine: ${e.message}")
         }
     }
 
     fun launchFlutter(context: Context) {
         try {
             val engine = FlutterEngineCache.getInstance().get(ENGINE_ID)
-            if (engine != null) {
-                callConfig(engine)
-
-                val intent = FlutterActivity
-                    .withCachedEngine(ENGINE_ID)
-                    .backgroundMode(FlutterActivityLaunchConfigs.BackgroundMode.transparent)
-                    .build(context)
-                context.startActivity(intent)
-            } else {
-                FlutterEngineCache.getInstance().put(ENGINE_ID, flutterEngine)
-                launchFlutter(context)
+            if (engine == null) {
+                AppLoggerCS.debugLog("$TAG[launchFlutter] Engine not ready — call ensureEngine() first.")
+                return
             }
+
+            setupMethodChannel(engine)
+
+            val intent = FlutterActivity
+                .withCachedEngine(ENGINE_ID)
+                .backgroundMode(FlutterActivityLaunchConfigs.BackgroundMode.transparent)
+                .build(context)
+            context.startActivity(intent)
         } catch (e: Exception) {
-            AppLoggerCS.debugLog("[FlutterEngineHelper][launchFlutter] exception: ${e.toString()}")
+            AppLoggerCS.debugLog("$TAG[launchFlutter] Exception: ${e.message}")
         }
     }
 
-    fun envInit(flavor: String) {
-        when (flavor) {
-            "development" -> {
-                EnvironmentConfig.flavor = Flavor.DEVELOPMENT
+    fun callConfigViaNative(context: Context) {
+        if (!isNetworkAvailable(context)) {
+            Toast.makeText(context, "No internet connection", Toast.LENGTH_SHORT).show()
+            AppLoggerCS.debugLog("$TAG[callConfigViaNative] Skipped — no network.")
+            return
+        }
+
+        if (flutterEngine == null) {
+            AppLoggerCS.debugLog("$TAG[callConfigViaNative] Skipped — engine not initialised.")
+            return
+        }
+
+        KonnekService().getConfig(
+            clientIdValue = KonnekNative.clientId,
+            onSuccess = { value: String ->
+                initConfigData = value
+                val output: Map<*, *> = jsonStringToMap(value)
+                KonnekNative.triggerFloatingUIChanges?.invoke(output["data"] as Map<*, *>)
+            },
+            onFailed = { errorMessage: String ->
+                AppLoggerCS.debugLog("$TAG[callConfigViaNative] Config fetch failed: $errorMessage")
+            },
+        )
+    }
+
+    fun disposeEngine() {
+        FlutterEngineCache.getInstance().remove(ENGINE_ID)
+        flutterEngine?.destroy()
+        flutterEngine = null
+        channel = null
+        AppLoggerCS.debugLog("$TAG[disposeEngine] Engine disposed.")
+    }
+
+    private fun setupMethodChannel(engine: FlutterEngine) {
+        channel = MethodChannel(engine.dartExecutor.binaryMessenger, CHANNEL_ID).also { ch ->
+            val arguments = hashMapOf(
+                "clientId" to KonnekNative.clientId,
+                "clientSecret" to KonnekNative.clientSecret,
+                "flavor" to KonnekNative.flavor,
+            )
+            ch.invokeMethod("clientConfigChannel", Gson().toJson(arguments))
+
+            if (initConfigData.isNotEmpty()) {
+                ch.invokeMethod("fetchConfigData", initConfigData)
             }
 
-            "staging" -> {
-                EnvironmentConfig.flavor = Flavor.STAGING
+            ch.setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "configData" -> result.success("success")
+                    "disposeEngine" -> {
+                        result.success("success dispose engine")
+                    }
+
+                    else -> result.notImplemented()
+                }
+            }
+        }
+    }
+
+    private fun registerLifecycleCallbacks(context: Context) {
+        val application = context.applicationContext as Application
+        application.registerActivityLifecycleCallbacks(object :
+            Application.ActivityLifecycleCallbacks {
+
+            override fun onActivityDestroyed(activity: Activity) {
+                AppLoggerCS.debugLog(
+                    "$TAG[lifecycle] Activity destroyed: ${activity.localClassName}"
+                )
+                if (activity !is FlutterActivity) {
+                    disposeEngine()
+                }
             }
 
-            "production" -> {
-                EnvironmentConfig.flavor = Flavor.PRODUCTION
-            }
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
+            override fun onActivityStarted(activity: Activity) = Unit
+            override fun onActivityResumed(activity: Activity) = Unit
+            override fun onActivityPaused(activity: Activity) = Unit
+            override fun onActivityStopped(activity: Activity) = Unit
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+        })
+    }
 
-            "canary" -> {
-                EnvironmentConfig.flavor = Flavor.CANARY
-            }
-
-            else -> {
-                EnvironmentConfig.flavor = Flavor.STAGING
-            }
+    private fun jsonStringToMap(jsonString: String): Map<*, *> {
+        return try {
+            Gson().fromJson(jsonString, Map::class.java) ?: emptyMap<String, Any>()
+        } catch (e: Exception) {
+            AppLoggerCS.debugLog("$TAG[jsonStringToMap] Parse error: ${e.message}")
+            emptyMap<String, Any>()
         }
     }
 
     private fun isNetworkAvailable(context: Context): Boolean {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = connectivityManager.activeNetwork ?: return false
-        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val capabilities = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 }
